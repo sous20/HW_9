@@ -1,0 +1,229 @@
+---
+title: "Home Work 9"
+author: "Nicholas Nasser"
+date: "Github Repository Link - ..."
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(ggplot2)
+library(mosaic)
+library(MatchIt)
+library(kableExtra)
+options(scipen = 999)
+
+turnout = read.csv("turnout.csv")
+solder = read.csv("solder.csv")
+
+```
+
+&nbsp;
+
+## Problem 1
+
+#### Part A
+
+&nbsp;
+
+```{r}
+
+turnout_gotvyes = filter(turnout, GOTV_call == "1")
+
+gotvyes_voted = round((nrow(filter(turnout_gotvyes, voted1998 == "1")) / nrow(turnout_gotvyes)) * 100, 2)
+
+```
+
+Approximately `r gotvyes_voted`% of those who received a GOTV call before the 1998 election voted.
+
+```{r}
+
+turnout_gotvno = filter(turnout, GOTV_call == "0")
+
+gotvno_voted = round((nrow(filter(turnout_gotvno, voted1998 == "1")) / nrow(turnout_gotvno)) * 100, 2)
+
+```
+
+Approximately `r gotvno_voted`% of those who did not receive a GOTV call before the 1998 election voted.
+
+```{r, results = FALSE}
+
+prop.test(voted1998 ~ GOTV_call, data = turnout, success = 0)
+
+```
+Using the prop.test function, I determined that a 95% confidence interval for the difference in proportions of voter turnout based on GOTV calls would range from approximately 14.11% to 26.59%. For clarity, any value on this interval is signaling a higher voter turnout for those who did receive the call. This result is statistically significant, as the confidence interval does not contain 0. It is also practically significant, as a difference of 14% to 26% is quite notable.
+
+#### Part B
+
+```{r}
+
+xtabs(~ voted1996 + GOTV_call, data = turnout) %>%
+  prop.table(margin=2)
+
+xtabs(~ voted1996 + voted1998, data = turnout) %>%
+  prop.table(margin=2)
+
+```
+&nbsp;
+
+71.26% of people who received a GOTV call also voted in 1996, while only 53.08% of people who did not receive a GOTV call voted in 1996. 76.24% of people who voted in 1998 also voted in 1996, while 34.97% of people who did not vote in 1998 voted in 1996. These summary statistics demonstrate that people who voted in 1996 were more likely to receive a GOTV call and were also more likely to vote in 1998. Therefore, we can conclude that the variable voted1996 is a confounding variable in the relationship between GOTV calls and the amount of people who voted in 1998.
+
+&nbsp;
+
+Part B continued on next page.
+
+```{r, fig.align = "center", fig.height = 2, fig.width = 5}
+
+ggplot(turnout) + geom_boxplot(aes(factor(GOTV_call), AGE)) + labs(title = "GOTV Calls vs. Age", x = "GOVT Calls", y = "Age")
+
+ggplot(turnout) + geom_boxplot(aes(factor(voted1998), AGE)) + labs(title = "Voted in 1998 vs. Age", x = "Voted in 1998", y = "Age")
+
+```
+
+&nbsp;
+
+The figures above clearly display that older voters were more likely to receive GOTV calls and vote in 1998; median/quartile values of age for those who received calls and voted in 1998 were much higher. Based on this, we can conclude that the variable AGE is a confounding variable in the relationship between GOTV calls and the amount of people who voted in 1998.    
+
+&nbsp;
+
+```{r}
+
+xtabs(~ MAJORPTY + GOTV_call, data = turnout) %>%
+  prop.table(margin=2)
+
+xtabs(~ MAJORPTY + voted1998, data = turnout) %>%
+  prop.table(margin=2)
+
+```
+&nbsp;
+
+80.16% of people who received GOTV calls belonged to a major party, while 74.48% of people who did not receive GOTV calls belonged to a major party. 80.19% of people who voted in 1998 belonged to a major party, while 70.06% of people who did not vote in 1998 belonged to a major party. These summary statistics demonstrate that people who belonged to one of two major parties were more likely to receive a GOTV call and were also more likely to vote in 1998. Therefore, we can conclude that the variable MAJORPTY is a confounding variable in the relationship between GOTV calls and the amount of people who voted in 1998.
+
+\newpage
+
+#### Part C
+
+```{r}
+
+turnout_matched = matchit(GOTV_call ~ voted1996 + AGE + MAJORPTY, data = turnout, ratio = 5) %>% match.data
+
+xtabs(~ MAJORPTY + GOTV_call, data = turnout_matched) %>%
+  prop.table(margin=2)
+
+xtabs(~ voted1996 + GOTV_call, data = turnout_matched) %>%
+  prop.table(margin=2)
+
+```
+
+&nbsp;
+
+```{r}
+
+ggplot(turnout_matched) + geom_boxplot(aes(factor(GOTV_call), AGE)) + labs(title = "GOTV Calls vs. Age", x = "GOVT Calls", y = "Age")
+
+```
+
+&nbsp;
+
+The tables and figure above demonstrate the relationships between GOVT calls and each of the three confounding variables of the original turnout data set after matching. It is clear that the confounding variables will now have no effect on the relationship between GOVT calls and the voter1998 variable, as they have all been balanced.
+
+```{r}
+
+turnout_matched_gotvyes = filter(turnout_matched, GOTV_call == "1")
+
+matched_gotvyes_voted = round((nrow(filter(turnout_matched_gotvyes, voted1998 == "1")) / nrow(turnout_matched_gotvyes)) * 100, 2)
+
+```
+
+Looking at the matched data set, approximately `r matched_gotvyes_voted`% of those who received a GOTV call before the 1998 election voted.
+
+```{r}
+
+turnout_matched_gotvno = filter(turnout_matched, GOTV_call == "0")
+
+matched_gotvno_voted = round((nrow(filter(turnout_matched_gotvno, voted1998 == "1")) / nrow(turnout_matched_gotvno)) * 100, 2)
+
+```
+
+Approximately `r matched_gotvno_voted`% of those who did not receive a GOTV call before the 1998 election voted.
+
+```{r, results = FALSE}
+
+prop.test(voted1998 ~ GOTV_call, data = turnout_matched, success = 0)
+
+```
+Using the prop.test function, I determined that a 95% confidence interval for the true difference in proportions of voter turnout based on GOTV calls would range from approximately 0.56% to 14.18%. Based on the statistical/practical significance of this result, we can conclude that GOVT calls increase the likelihood of voting, regardless of who receives the call.
+
+\newpage
+
+## Problem 2
+
+#### Part A
+
+&nbsp;
+
+```{r, warning = FALSE, fig.height = 3.25, fig.width = 6, fig.align = "center"}
+
+ggplot(solder) + geom_jitter(aes(x = Opening, y = skips), width = 0.1) + stat_summary(aes(x = Opening, y = skips), fun = "mean", color = "red", size = 1) + labs(title = "Solder Opening Size vs. Number of Skips", x = "Opening Size", y = "Number of Skips")
+
+```
+&nbsp;
+
+This jitterplot displays the number of skips for all data points based on the size of the opening of the solder gun. Looking at the plot, it is evident that on average, smaller openings will cause more skips will occur.
+
+&nbsp;
+
+```{r, warning = FALSE, fig.height = 3.25, fig.width = 6, fig.align = "center"}
+
+ggplot(solder) + geom_jitter(aes(x = Solder, y = skips), width = 0.1) + stat_summary(aes(x = Solder, y = skips), fun = "mean", color = "red", size = 1) + labs(title = "Solder Alloy Thickness vs. Number of Skips", x = "Solder Alloy Thickness", y = "Number of Skips")
+
+```
+
+&nbsp;
+
+This jitterplot displays the number of skips for all data points based on the alloy thickness of the solder gun. Looking at the plot, it is evident that on average, thin alloy thickness leads to more skips than thick alloy thickness.
+
+\newpage
+
+#### Part B
+
+&nbsp;
+
+```{r}
+
+solder_model = lm(skips ~ Opening + Solder + Opening:Solder, data = solder)
+
+solder_model_table = as.data.frame(confint(solder_model, level = 0.95))
+
+solder_model_table$value_estimates = coef(solder_model)
+
+solder_model_table %>% kbl(caption = "Confidence Intervals and Estimates for Coefficients of Solder Model") %>% kable_styling(latex_options = "hold_position")
+
+```
+#### Part C
+
+&nbsp;
+
+The intercept (0.393) of our model represents the expected number of skips for a soldering gun with a large opening and thick alloy thickness. This is our baseline value.
+
+OpeningM (2.407) represents the value of skips added to the baseline when the soldering gun has a medium sized opening.
+
+OpeningS (5.127) represents the value of skips added to the baseline when the soldering gun has a small sized opening.
+
+SolderThin (2.280) represents the value of skips added to the baseline when the solder alloy thickness is thin.
+
+OpeningM:SolderThin (-0.740) is the additional interaction effect on the number of skips generated by a combination of having a medium solder opening and thin alloy thickness.
+
+OpeningS:SolderThin (9.653) is the additional interaction effect on the number of skips generated by a combination of having a small solder opening and thin alloy thickness.
+
+&nbsp;
+
+#### Part D
+
+&nbsp;
+
+If I had to recommend a solder opening size and alloy thickness to AT&T after looking at this data, I would recommend a soldering gun with a large opening and thick alloy thickness because it results in the lowest amount of skips on average. This is because any other option results in the addition of a positive coefficient value to the baseline (the interaction between a medium opening and thin solder thickness is negative, but not nearly negative enough to outweigh the main effects of each factor individually).
+
